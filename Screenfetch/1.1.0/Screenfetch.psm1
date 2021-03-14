@@ -2,6 +2,8 @@
         .SYNOPSIS
         Display detailed information about your system in the terminal, it also comes with a ASCII logo.
 #>
+
+
 # -----------------------------------------------------------------------------
 #                              Screenfetch
 # -----------------------------------------------------------------------------
@@ -17,7 +19,8 @@
 #                              Functions
 # -----------------------------------------------------------------------------
 Add-Type -AssemblyName System.Windows.Forms
-$global:firstTime = $true
+$global:firstRun = $true
+
 Function Screenfetch {
     <#
     .SYNOPSIS
@@ -32,28 +35,30 @@ Function Screenfetch {
     [CmdletBinding()]
     param()
 
-    if ($global:firstTime) {
+    if ($global:firstRun) {
         $global:asciiArt = Get-WindowsArt;
-        $global:lineToTitleMappings = Get-LineToTitleMappings;
-
     }
-
-    $global:systemInfoCollection = Get-SystemSpecifications;
-    $global:firstTime = $false;
-    if ($global:systemInfoCollection.Count -gt $global:asciiArt.Count) {
-        Write-Error "System Specs occupies more lines than the Ascii Art resource selected"
+    Get-Informations;
+    $line = 0;
+    foreach ($key in $global:dictionary.Keys) {
+        foreach ($value in $global:dictionary[$key]) {
+            Write-Host $global:asciiArt[$line] -f Cyan -NoNewline;
+            if ($global:dictionary[$key].Count -eq 1) {
+                Write-Host ($key + ": ") -f Red -NoNewline;
+                Write-Host $value;
+            }
+            else {
+                $splitted = $value.Split(":", 2);
+                Write-Host ($splitted[0] + ":") -f Red -NoNewline;
+                Write-Host $splitted[1];
+            }
+            if ($line -lt ($global:asciiArt.Count - 1)) {
+                $line ++;
+            }
+        }
     }
-    for ($line = 0; $line -lt $global:asciiArt.Count; $line++) {
-        Write-Host $global:asciiArt[$line] -f Cyan -NoNewline;
-        Write-Host $global:lineToTitleMappings[$line] -f Red -NoNewline;
-        if ($global:systemInfoCollection[$line] -like '*:*') {
-            $splitted = $global:systemInfoCollection[$line].Split(":");
-            Write-Host ($splitted[0] + ":") -f Red -NoNewline;
-            Write-Host $splitted[1];
-        }
-        else {
-            Write-Host $global:systemInfoCollection[$line];
-        }
+    for ($l = $line; $l -lt $global:asciiArt.Count; $l++) {
+        Write-Host $global:asciiArt[$l] -f Cyan;
     }
 }
 
@@ -75,107 +80,76 @@ Function Get-WindowsArt() {
     "        '''':::: ::::::::::::::::       ",
     "                 ''''::::::::::::       ",
     "                         ''''::::       ",
-    "                                        ",
-    "                                        ",
     "                                        ";
 
     return $ArtArray;
 }
-Function Get-git () {
-    $global:dictionary = [ordered]@{
-        "User" = Get-UserInformation;
-        "OS" = Get-OS;
-        "Kernel" = Get-Kernel;
-        "Motherboard" = Get-MotherBoardInfo;
-        "Shell" = $null;
-        "Resolution" = $null;
-        "Windows Manager" = Get-WM;
-        "Font" = Get-Font;
-        "CPU" = Get-CPU;
-        "RAM" = $null;
-        "Disk" = $null;
-    };
-    $TitleMappings = @{
-        0  = "User: ";
-        1  = "OS: ";
-        2  = "Kernel: ";
-        3  = "Uptime: ";
-        4  = "Motherboard: ";
-        5  = "Shell: ";
-        6  = "Resolution: ";
-        7  = "Window Manager: ";
-        8  = "Font: ";
-        9  = "CPU: ";
-        10 = "GPU ";
-        11 = "RAM: ";
-    };
-    return $TitleMappings;
-}
-
-Function Get-SystemSpecifications {
+Function Get-Informations {
     <#
     .SYNOPSIS
         Get system's informations.
     .INPUTS
         None
     .OUTPUTS
-        System.Collections.ArrayList
-    .LINK
-        Get-CimInstance
+        System.Dictionary
     #>
-    [CmdletBinding()]
     param()
     $global:operatingSystem = Get-CimInstance Win32_OperatingSystem;
-    $global:disks = Get-Disks;
-    if ($global:firstTime){
-        $global:userInfo = Get-UserInformation;
-        $global:os = Get-OS;
-        $global:kernel = Get-Kernel;
-        $global:motherboard = Get-MotherBoardInfo;
-        $global:wm = Get-WM;
-        $global:font = Get-Font;
-        $global:cpu = Get-CPU;
-        $global:gpu = Get-GPU;
-        $global:firstTime = $false;
+    if ($global:firstRun) {
+        $global:dictionary = [ordered]@{
+            "User"            = Get-UserInformation;
+            "OS"              = Get-OS;
+            "Kernel"          = Get-Kernel;
+            "Uptime"          = $null;
+            "Motherboard"     = Get-MotherBoardInfo;
+            "Shell"           = Get-Shell;
+            "Display"         = $null;
+            "Windows Manager" = Get-WM;
+            "Font"            = Get-Font;
+            "CPU"             = Get-CPU;
+            "GPU"             = Get-GPU;
+            "RAM"             = $null;
+            "Disk"            = $null;
+        };
+        $global:firstRun = $false;
     }
-    [System.Collections.ArrayList] $global:systemInfoCollection = $global:userInfo,$global:os,$global:kernel,(Get-FormattedUptime),$global:motherboard,(Get-Shell),(Get-DisplaysResolution),$global:wm,$global:font,$global:cpu,$global:gpu,(Get-RAM);
-
-    foreach ($disk in $disks) {
-        $global:systemInfoCollection.Add($disk);
-    }
-
-    return $global:systemInfoCollection;
+    $global:dictionary["Uptime"] = Get-FormattedUptime;
+    $global:dictionary["Display"] = Get-DisplaysResolution;
+    $global:dictionary["RAM"] = Get-RAM;
+    $global:dictionary["Disk"] = Get-Disks;
 }
-
-Function Get-UserInformation() {
+Function Get-UserInformation {
+    param()
     return $ENV:USERNAME + "@" + $global:operatingSystem.CSName;
 }
-Function Get-OS() {
+Function Get-OS {
+    param()
     return $global:operatingSystem.Caption + " " + $global:operatingSystem.OSArchitecture;
 }
-Function Get-Kernel() {
+Function Get-Kernel {
+    param()
     return $global:operatingSystem.Version;
 }
-Function Get-FormattedUptime() {
+Function Get-FormattedUptime {
+    param()
     return (Get-Uptime).ToString("dd' d 'hh' h 'mm' m 'ss' s'");
 }
-Function Get-MotherBoardInfo() {
-    $baseboard = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product
+Function Get-MotherBoardInfo {
+    param()
+    $baseboard = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product;
     return $baseboard.Manufacturer + " " + $baseboard.Product;
-
 }
-Function Get-Shell() {
-    return "PowerShell $($PSVersionTable.PSVersion.ToString())";
+Function Get-Shell {
+    param()
+    return "PowerShell " + $PSVersionTable.PSVersion.ToString();
 }
 Function Get-DisplaysResolution() {
-    $Displays = New-Object System.Collections.Generic.List[System.Object];
-    # This gives the available resolutions
-    $Monitors = Get-CimInstance -N "root\wmi" -Class WmiMonitorListedSupportedSourceModes
-    foreach ($monitor in $Monitors) {
-        # Sort the available modes by display area (width*height)
-        $sortedResolutions = $monitor.MonitorSourceModes | Sort-Object -Property { $_.HorizontalActivePixels * $_.VerticalActivePixels }
-        $maxResolutions = $sortedResolutions | Select-Object @{N = "MaxRes"; E = { "$($_.HorizontalActivePixels) x $($_.VerticalActivePixels) " } }
-        $Displays.Add(($maxResolutions | Select-Object -last 1).MaxRes);
+    $Displays = New-Object System.Collections.Generic.List[System.String];
+    $Monitors = [System.Windows.Forms.Screen]::AllScreens | Sort-Object Primary -Descending
+    for ($i = 0; $i -lt $Monitors.Count; $i++) {
+        $monitor = $Monitors.Get($i);
+        $formattedMon = "Display " + ($i + 1) + ": " + $monitor.Bounds.Size.Width + " x " + $monitor.Bounds.Size.Height;
+        $Displays.Add($formattedMon);
     }
     return $Displays;
 }
@@ -193,27 +167,25 @@ Function Get-GPU() {
 }
 Function Get-RAM() {
     # Free Physical Memory returns a Kilobyte value while TotalPhysicalMemory a Byte one.
-    $FreeRam = $global:operatingSystem.FreePhysicalMemory * 1KB;
     $TotalRam = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory;
-    $UsedRam = $TotalRam - $FreeRam;
+    $UsedRam = $TotalRam - ($global:operatingSystem.FreePhysicalMemory * 1KB);
     $UsedRamPercent = $UsedRam / $TotalRam;
-
-    return Format-Bytes($UsedRam) + "/" + Format-Bytes($TotalRam) + "(" + $UsedRamPercent.ToString('P') + ")";
+    return (Format-Bytes($UsedRam)) + "/" + (Format-Bytes($TotalRam)) + " (" + $UsedRamPercent.ToString('P') + ")";
 }
 Function Get-Disks() {
     $FormattedDisks = New-Object System.Collections.Generic.List[System.String];
-    foreach ($disk in Get-CimInstance Win32_LogicalDisk) {
+    foreach ($disk in (Get-CimInstance Win32_LogicalDisk)) {
         $DiskID = $disk.DeviceId;
         $DiskSize = $disk.Size;
         $FreeDiskSize = 0.00;
         $UsedDiskSize = 0.00;
         $UsedDiskPercent = 1.00;
         if ($DiskSize -gt 0) {
-            $FreeDiskSize =$disk.FreeSpace;
+            $FreeDiskSize = $disk.FreeSpace;
             $UsedDiskSize = $DiskSize - $FreeDiskSize;
             $UsedDiskPercent = $UsedDiskSize / $DiskSize;
         }
-        $FormattedDisk = "Disk " + $DiskID + " " + (Format-Bytes($UsedDiskSize)) + "/" + (Format-Bytes($DiskSizeGB)) + "(" + $UsedDiskPercent.ToString('P') + ")";
+        $FormattedDisk = "Disk " + $DiskID + " " + (Format-Bytes($UsedDiskSize)) + "/" + (Format-Bytes($DiskSize)) + " (" + $UsedDiskPercent.ToString('P') + ")";
         $FormattedDisks.Add($FormattedDisk);
     }
     return $FormattedDisks;
@@ -226,17 +198,20 @@ Function Format-Bytes {
         )]
         [float]$Value
     )
-    Begin{
-        $sizes = 'KB','MB','GB','TB','PB'
+    Begin {
+        $sizes = 'KB', 'MB', 'GB', 'TB', 'PB'
     }
     Process {
-        for($x = 0;$x -lt $sizes.count; $x++){
-            if ($Value -lt [int64]"1$($sizes[$x])"){
-                if ($x -eq 0){
-                    return "$Value B"
-                } else {
-                    $num = $Value / [int64]"1${$sizes[$x-1]}"
-                    return $num.ToString('N') + " " + ${$sizes[$x-1]}
+        for ($x = 0; $x -lt $sizes.count; $x++) {
+            $biggerSize = [int64]("1" + $sizes[$x])
+            if ($Value -lt $biggerSize) {
+                if ($x -eq 0) {
+                    return $Value.Tostring() + " B"
+                }
+                else {
+                    $size = [int64]("1" + $sizes[$x - 1])
+                    $num = $Value / $size
+                    return $num.ToString('N') + " " + $sizes[$x - 1]
                 }
             }
         }
