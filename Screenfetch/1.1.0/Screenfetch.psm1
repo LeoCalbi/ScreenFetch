@@ -34,31 +34,38 @@ Function Screenfetch {
     #>
     [CmdletBinding()]
     param()
-
+    $colorsConfig = @{"Art" = "Cyan"; "Key" = "Red"; "Value" = "White" }
     if ($global:firstRun) {
         $global:asciiArt = Get-WindowsArt;
+        $global:colors = [enum]::GetValues([System.ConsoleColor])
     }
     Get-Informations;
     $line = 0;
     foreach ($key in $global:dictionary.Keys) {
         foreach ($value in $global:dictionary[$key]) {
-            Write-Host $global:asciiArt[$line] -f Cyan -NoNewline;
+            Write-Host $global:asciiArt[$line] -f $colorsConfig.Art -NoNewline;
             if ($global:dictionary[$key].Count -eq 1) {
-                Write-Host ($key + ": ") -f Red -NoNewline;
-                Write-Host $value;
+                Write-Host ($key + ": ") -f $colorsConfig.Key -NoNewline;
+                Write-Host $value -f $colorsConfig.Value;
             }
             else {
                 $splitted = $value.Split(":", 2);
-                Write-Host ($splitted[0] + ":") -f Red -NoNewline;
-                Write-Host $splitted[1];
+                Write-Host ($splitted[0] + ":") -f $colorsConfig.Key -NoNewline;
+                Write-Host $splitted[1] -f $colorsConfig.Value;
             }
             if ($line -lt ($global:asciiArt.Count - 1)) {
                 $line ++;
             }
         }
     }
+    Write-Host $global:asciiArt[$line] -f $colorsConfig.Art -NoNewline;
+    $line ++;
+    for ($c = 0; $c -lt ($global:colors.Count - 1); $c++) {
+        Write-Host "  "  -ForegroundColor $global:colors[$c] -BackgroundColor $global:colors[$c] -NoNewLine;
+    }
+    Write-Host "  "  -ForegroundColor $global:colors[$c] -BackgroundColor $global:colors[$c];
     for ($l = $line; $l -lt $global:asciiArt.Count; $l++) {
-        Write-Host $global:asciiArt[$l] -f Cyan;
+        Write-Host $global:asciiArt[$l] -f $colorsConfig.Art;
     }
 }
 
