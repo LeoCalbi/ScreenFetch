@@ -33,7 +33,7 @@ Function Screenfetch {
         Get-SystemSpecifications
     #>
     [CmdletBinding()]
-    param()
+    Param()
     $colorsConfig = @{"Art" = "Cyan"; "Key" = "Red"; "Value" = "White" }
     if ($global:firstRun) {
         $global:asciiArt = Get-WindowsArt;
@@ -61,9 +61,9 @@ Function Screenfetch {
     Write-Host $global:asciiArt[$line] -f $colorsConfig.Art -NoNewline;
     $line ++;
     for ($c = 0; $c -lt ($global:colors.Count - 1); $c++) {
-        Write-Host "  "  -ForegroundColor $global:colors[$c] -BackgroundColor $global:colors[$c] -NoNewLine;
+        Write-Host "  " -ForegroundColor $global:colors[$c] -BackgroundColor $global:colors[$c] -NoNewline;
     }
-    Write-Host "  "  -ForegroundColor $global:colors[$c] -BackgroundColor $global:colors[$c];
+    Write-Host "  " -ForegroundColor $global:colors[$c] -BackgroundColor $global:colors[$c];
     for ($l = $line; $l -lt $global:asciiArt.Count; $l++) {
         Write-Host $global:asciiArt[$l] -f $colorsConfig.Art;
     }
@@ -112,7 +112,7 @@ Function Get-Informations {
             "Shell"           = Get-Shell;
             "Display"         = $null;
             "Windows Manager" = Get-WM;
-            "Font"            = Get-Font;
+            "Font"            = $null;
             "CPU"             = Get-CPU;
             "GPU"             = Get-GPU;
             "RAM"             = $null;
@@ -122,35 +122,37 @@ Function Get-Informations {
     }
     $global:dictionary["Uptime"] = Get-FormattedUptime;
     $global:dictionary["Display"] = Get-DisplaysResolution;
+    $global:dictionary["Font"] = Get-Font;
     $global:dictionary["RAM"] = Get-RAM;
     $global:dictionary["Disk"] = Get-Disks;
 }
 Function Get-UserInformation {
-    param()
+    Param()
     return $ENV:USERNAME + "@" + $global:operatingSystem.CSName;
 }
 Function Get-OS {
-    param()
+    Param()
     return $global:operatingSystem.Caption + " " + $global:operatingSystem.OSArchitecture;
 }
 Function Get-Kernel {
-    param()
+    Param()
     return $global:operatingSystem.Version;
 }
 Function Get-FormattedUptime {
-    param()
+    Param()
     return (Get-Uptime).ToString("dd' d 'hh' h 'mm' m 'ss' s'");
 }
 Function Get-MotherBoardInfo {
-    param()
+    Param()
     $baseboard = Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer, Product;
     return $baseboard.Manufacturer + " " + $baseboard.Product;
 }
 Function Get-Shell {
-    param()
+    Param()
     return "PowerShell " + $PSVersionTable.PSVersion.ToString();
 }
-Function Get-DisplaysResolution() {
+Function Get-DisplaysResolution {
+    Param()
     $Displays = New-Object System.Collections.Generic.List[System.String];
     $Monitors = [System.Windows.Forms.Screen]::AllScreens | Sort-Object Primary -Descending
     for ($i = 0; $i -lt $Monitors.Count; $i++) {
@@ -160,26 +162,32 @@ Function Get-DisplaysResolution() {
     }
     return $Displays;
 }
-Function Get-WM() {
+Function Get-WM {
+    Param()
     return "DWM";
 }
-Function Get-Font() {
-    return "Delugia Nerd Font";
+Function Get-Font {
+    Param()
+    return Get-ItemPropertyValue "HKCU:\Console" -Name FaceName;
 }
-Function Get-CPU() {
+Function Get-CPU {
+    Param()
     return (((Get-CimInstance Win32_Processor).Name) -replace '\s+', ' ');
 }
-Function Get-GPU() {
+Function Get-GPU {
+    Param()
     return (Get-CimInstance Win32_DisplayConfiguration).DeviceName;
 }
-Function Get-RAM() {
+Function Get-RAM {
+    Param()
     # Free Physical Memory returns a Kilobyte value while TotalPhysicalMemory a Byte one.
     $TotalRam = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory;
     $UsedRam = $TotalRam - ($global:operatingSystem.FreePhysicalMemory * 1KB);
     $UsedRamPercent = $UsedRam / $TotalRam;
     return (Format-Bytes($UsedRam)) + "/" + (Format-Bytes($TotalRam)) + " (" + $UsedRamPercent.ToString('P') + ")";
 }
-Function Get-Disks() {
+Function Get-Disks {
+    Param()
     $FormattedDisks = New-Object System.Collections.Generic.List[System.String];
     foreach ($disk in (Get-CimInstance Win32_LogicalDisk)) {
         $DiskID = $disk.DeviceId;
