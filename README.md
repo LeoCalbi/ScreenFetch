@@ -23,12 +23,11 @@ Using the command `Screenfetch` you can obtain the following system information 
 
 ## :tada: Installation
 
-
 ### With my Dotfiles
 
-The complete use of this module alongside others is managed by my personal [Dotfile configuration](https://github.com/LeoCalbi/dotfiles) managed with [Chezmoi](https://www.chezmoi.io/)
+The complete use of this module alongside others is managed by my personal [Dotfile configuration](https://github.com/LeoCalbi/dotfiles) managed with [Chezmoi](https://www.chezmoi.io/).
 
-### With git and Powershell Core
+### With git
 
 Execute:
 
